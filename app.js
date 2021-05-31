@@ -31,7 +31,7 @@ const winston = require('winston');
 const path = require('path');
 const fs = require('fs');
 const exifr = require('exifr');
-const moment = require('moment');
+const moment = require('moment-timezone');
 
 const app = express();
 const fileStore = sessionFileStore(session);
@@ -368,7 +368,7 @@ async function recFindByExt(base, filesList, files, result) {
           const fileInfo = await exifr.parse(newbase, {reviveValues: false});
           
           for (const gFile of filterList) {
-            const gFileTimeStamp = moment(gFile.creationTime).add((fileInfo.Model === 'ILCE-7RM4' ? 1 : 0), 'hours').format('YYYY:MM:DD HH:mm:ss');
+            const gFileTimeStamp = moment(gFile.creationTime).add((fileInfo.Model === 'ILCE-7RM4' ? 1 : 0), 'hours').tz('Asia/Kolkata').format('YYYY:MM:DD HH:mm:ss');
             const fileTimeStamp = fileInfo.CreateDate;
 
             if (gFile.fileName === file && gFile.cameraModel === fileInfo.Model && gFileTimeStamp === fileTimeStamp) {

@@ -365,10 +365,12 @@ async function recFindByExt(base, filesList, files, result) {
       const filterList = filesList.filter(gFile => gFile.fileName === file);
       if(filterList.length){
         try {
-          const fileInfo = await exifr.parse(newbase);
+          const fileInfo = await exifr.parse(newbase, {reviveValues: false});
+          
           for (const gFile of filterList) {
-            const gFileTimeStamp = moment(gFile.creationTime).unix();
-            const fileTimeStamp = moment(fileInfo.CreateDate).unix();
+            const gFileTimeStamp = moment(gFile.creationTime).add((fileInfo.Model === 'ILCE-7RM4' ? 1 : 0), 'hours').format('YYYY:MM:DD HH:mm:ss');
+            const fileTimeStamp = fileInfo.CreateDate;
+
             if (gFile.fileName === file && gFile.cameraModel === fileInfo.Model && gFileTimeStamp === fileTimeStamp) {
               result.push({
                 sno: (result.length + 1),
@@ -378,7 +380,6 @@ async function recFindByExt(base, filesList, files, result) {
                 path: base.replace(process.env.PATH_REPLACE_STRING, ''),
                 fullPath: newbase.replace(process.env.PATH_REPLACE_STRING, ''),
               })
-              console.log(result.length);
               break;
             }
           };

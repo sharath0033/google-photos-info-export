@@ -141,7 +141,8 @@ function exportInfo() {
     dataType: "json",
     data: JSON.stringify(payload),
     success: (data) => {
-      exportCSVFile(data.headers, data.items, 'images');
+      //console.log(data);
+      exportCSVFile(data.headers, data.items, 'bride');
       hideLoadingDialog();
     },
     error: (data) => {

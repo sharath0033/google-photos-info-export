@@ -15,6 +15,8 @@
 'use strict';
 
 // [START app]
+import 'dotenv/config';
+
 import bodyParser from 'body-parser';
 import express from 'express';
 import expressWinston from 'express-winston';
@@ -221,16 +223,16 @@ app.get('/auth/google', passport.authenticate('google', {
 
 // Callback receiver for the OAuth process after log in.
 app.get(
-  '/auth/google/callback',
-  passport.authenticate(
-      'google', {failureRedirect: '/', failureFlash: true, session: true}),
-  (req, res) => {
-    // User has logged in.
-    logger.info('User has logged in.');
-    req.session.save(() => {
-      res.redirect('/');
-    });      
-  });
+    '/auth/google/callback',
+    passport.authenticate(
+        'google', {failureRedirect: '/', failureFlash: true, session: true}),
+    (req, res) => {
+      // User has logged in.
+      logger.info('User has logged in.');
+      req.session.save(() => {
+        res.redirect('/');
+      });      
+    });
 
 // Loads the search page if the user is authenticated.
 // This page includes the search form.
@@ -242,6 +244,64 @@ app.get('/search', (req, res) => {
 // This page displays a list of albums owned by the user.
 app.get('/album', (req, res) => {
   renderIfAuthenticated(req, res, 'pages/album');
+});
+
+
+// Handles form submissions from the search page.
+// The user has made a selection and wants to load photos into the photo frame
+// from a search query.
+// Construct a filter and submit it to the Library API in
+// libraryApiSearch(authToken, parameters).
+// Returns a list of media items if the search was successful, or an error
+// otherwise.
+app.post('/loadFromSearch', async (req, res) => {
+  const authToken = req.user.token;
+
+  logger.info('Loading images from search.');
+  logger.silly('Received form data: ', req.body);
+
+  // Construct a filter for photos.
+  // Other parameters are added below based on the form submission.
+  const filters = {contentFilter: {}, mediaTypeFilter: {mediaTypes: ['PHOTO']}};
+
+  if (req.body.includedCategories) {
+    // Included categories are set in the form. Add them to the filter.
+    filters.contentFilter.includedContentCategories =
+        [req.body.includedCategories];
+  }
+
+  if (req.body.excludedCategories) {
+    // Excluded categories are set in the form. Add them to the filter.
+    filters.contentFilter.excludedContentCategories =
+        [req.body.excludedCategories];
+  }
+
+  // Add a date filter if set, either as exact or as range.
+  if (req.body.dateFilter == 'exact') {
+    filters.dateFilter = {
+      dates: constructDate(
+          req.body.exactYear, req.body.exactMonth, req.body.exactDay),
+    }
+  } else if (req.body.dateFilter == 'range') {
+    filters.dateFilter = {
+      ranges: [{
+        startDate: constructDate(
+            req.body.startYear, req.body.startMonth, req.body.startDay),
+        endDate:
+            constructDate(req.body.endYear, req.body.endMonth, req.body.endDay),
+      }]
+    }
+  }
+
+  // Create the parameters that will be submitted to the Library API.
+  const parameters = {filters};
+
+  // Submit the search request to the API and wait for the result.
+  const data = await libraryApiSearch(authToken, parameters);
+
+  // Return and cache the result and parameters.
+  const userId = req.user.profile.id;
+  returnPhotos(res, userId, data, parameters);
 });
 
 // Handles selections from the album page where an album ID is submitted.
@@ -410,7 +470,7 @@ async function recFindByExt(base, filesList, files, result) {
 
 // Start the server
 server.listen(config.port, () => {
-  console.log(`App listening on port http://localhost:${config.port}`);
+  console.log(`App listening on port http://127.0.0.1:${config.port}`);
   console.log('Press Ctrl+C to quit.');
 });
 

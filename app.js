@@ -15,37 +15,37 @@
 'use strict';
 
 // [START app]
-require("dotenv").config();
-const async = require('async');
-const bodyParser = require('body-parser');
-const config = require('./config.js');
-const express = require('express');
-const expressWinston = require('express-winston');
-const http = require('http');
-const persist = require('node-persist');
-const request = require('request-promise');
-const session = require('express-session');
-const sessionFileStore = require('session-file-store');
-const cookieSession = require('cookie-session');
-const winston = require('winston');
-const path = require('path');
-const fs = require('fs');
-const exifr = require('exifr');
-const moment = require('moment-timezone');
+import bodyParser from 'body-parser';
+import express from 'express';
+import expressWinston from 'express-winston';
+import fetch from 'node-fetch';
+import http from 'http';
+import passport from 'passport';
+import path from 'path';
+import persist from 'node-persist';
+import session from 'express-session';
+import sessionFileStore from 'session-file-store';
+import winston from 'winston';
+
+import * as fs from 'fs';
+import exifr from 'exifr';
+import * as moment from 'moment-timezone';
+
+import {config} from './config.js';
+import {auth} from './auth.js';
+
+// The path to the folder this file is located in.
+const dirname = path.dirname(new URL(import.meta.url).pathname);
 
 const app = express();
 const fileStore = sessionFileStore(session);
 const server = http.Server(app);
 
-//Configure Session Storage
-app.use(cookieSession({
-  name: 'session-name',
-  keys: ['key1', 'key2']
-}))
-
 // Use the EJS template engine
 app.set('view engine', 'ejs');
 
+// Disable browser-side caching for demo purposes.
+app.disable('etag');
 
 // Set up a cache for media items that expires after 55 minutes.
 // This caches the baseUrls for media items that have been selected
@@ -89,8 +89,6 @@ const storage = persist.create({dir: 'persist-storage/'});
 storage.init();
 
 // Set up OAuth 2.0 authentication through the passport.js library.
-const passport = require('passport');
-const auth = require('./auth');
 auth(passport);
 
 // Set up a session middleware to handle user sessions.
@@ -129,8 +127,7 @@ if (process.env.DEBUG) {
         ],
         winstonInstance: logger
   }));
-  // Enable request debugging.
-  require('request-promise').debug = true;
+
 } else {
   // By default, only print all 'verbose' log level messages or below.
   logger.level = 'verbose';
@@ -139,13 +136,30 @@ if (process.env.DEBUG) {
 
 // Set up static routes for hosted libraries.
 app.use(express.static('static'));
-app.use('/js', express.static(__dirname + '/node_modules/jquery/dist/'));
+app.use('/js',
+  express.static(
+    path.join(
+      dirname,
+      '/node_modules/jquery/dist/'),
+  )
+);
+
 app.use(
-    '/fancybox',
-    express.static(__dirname + '/node_modules/@fancyapps/fancybox/dist/'));
+  '/fancybox',
+  express.static(
+    path.join(
+      dirname,
+      '/node_modules/@fancyapps/fancybox/dist/'),
+  )
+);
 app.use(
-    '/mdlite',
-    express.static(__dirname + '/node_modules/material-design-lite/dist/'));
+  '/mdlite',
+  express.static(
+    path.join(
+      dirname,
+      '/node_modules/material-design-lite/dist/'),
+  )
+);
 
 
 // Parse application/json request data.
@@ -207,15 +221,16 @@ app.get('/auth/google', passport.authenticate('google', {
 
 // Callback receiver for the OAuth process after log in.
 app.get(
-    '/auth/google/callback',
-    passport.authenticate(
-        'google', {failureRedirect: '/', failureFlash: true, session: true}),
-    (req, res) => {
-      // User has logged in.
-      logger.info('User has logged in.');
-      //setTimeout(() => res.redirect('/'), 1000);
+  '/auth/google/callback',
+  passport.authenticate(
+      'google', {failureRedirect: '/', failureFlash: true, session: true}),
+  (req, res) => {
+    // User has logged in.
+    logger.info('User has logged in.');
+    req.session.save(() => {
       res.redirect('/');
-    });
+    });      
+  });
 
 // Loads the search page if the user is authenticated.
 // This page includes the search form.
@@ -280,7 +295,7 @@ app.get('/getAlbums', async (req, res) => {
       // The cache implementation automatically clears the data when the TTL is
       // reached.
       res.status(200).send(data);
-      albumCache.setItemSync(userId, data);
+      albumCache.setItem(userId, data);
     }
   }
 });
@@ -427,10 +442,10 @@ function returnPhotos(res, userId, data, searchParameter) {
     delete searchParameter.pageSize;
 
     // Cache the media items that were loaded temporarily.
-    mediaItemCache.setItemSync(userId, data.photos);
+    mediaItemCache.setItem(userId, data.photos);
     // Store the parameters that were used to load these images. They are used
     // to resubmit the query after the cache expires.
-    storage.setItemSync(userId, {parameters: searchParameter});
+    storage.setItem(userId, {parameters: searchParameter});
 
     // Return the photos and parameters back int the response.
     res.status(200).send({photos: data.photos, parameters: searchParameter});
@@ -441,9 +456,9 @@ function returnPhotos(res, userId, data, searchParameter) {
 function returnError(res, data) {
   // Return the same status code that was returned in the error or use 500
   // otherwise.
-  const statusCode = data.error.code || 500;
+  const statusCode = data.error.status || 500;
   // Return the error.
-  res.status(statusCode).send(data.error);
+  res.status(statusCode).send(JSON.stringify(data.error));
 }
 
 // Constructs a date object required for the Library API.
@@ -478,12 +493,17 @@ async function libraryApiSearch(authToken, parameters) {
           `Submitting search with parameters: ${JSON.stringify(parameters)}`);
 
       // Make a POST request to search the library or album
-      const result =
-          await request.post(config.apiEndpoint + '/v1/mediaItems:search', {
-            headers: {'Content-Type': 'application/json'},
-            json: parameters,
-            auth: {'bearer': authToken},
-          });
+      const searchResponse =
+        await fetch(config.apiEndpoint + '/v1/mediaItems:search', {
+          method: 'post',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + authToken
+          },
+          body: JSON.stringify(parameters)
+        });
+
+      const result = await checkStatus(searchResponse);
 
       logger.debug(`Response: ${result}`);
 
@@ -514,11 +534,8 @@ async function libraryApiSearch(authToken, parameters) {
              parameters.pageToken != null);
 
   } catch (err) {
-    // If the error is a StatusCodeError, it contains an error.error object that
-    // should be returned. It has a name, statuscode and message in the correct
-    // format. Otherwise extract the properties.
-    error = err.error.error ||
-        {name: err.name, code: err.statusCode, message: err.message};
+    // Log the error and prepare to return it.
+    error = err;
     logger.error(error);
   }
 
@@ -532,7 +549,9 @@ async function libraryApiGetAlbums(authToken) {
   let albums = [];
   let nextPageToken = null;
   let error = null;
-  let parameters = {pageSize: config.albumPageSize};
+
+  let parameters = new URLSearchParams();
+  parameters.append('pageSize', config.albumPageSize);
 
   try {
     // Loop while there is a nextpageToken property in the response until all
@@ -541,12 +560,15 @@ async function libraryApiGetAlbums(authToken) {
       logger.verbose(`Loading albums. Received so far: ${albums.length}`);
       // Make a GET request to load the albums with optional parameters (the
       // pageToken if set).
-      const result = await request.get(config.apiEndpoint + '/v1/albums', {
-        headers: {'Content-Type': 'application/json'},
-        qs: parameters,
-        json: true,
-        auth: {'bearer': authToken},
+      const albumResponse = await fetch(config.apiEndpoint + '/v1/albums?' + parameters, {
+        method: 'get',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + authToken
+        },
       });
+
+      const result = await checkStatus(albumResponse);
 
       logger.debug(`Response: ${result}`);
 
@@ -557,22 +579,52 @@ async function libraryApiGetAlbums(authToken) {
 
         albums = albums.concat(items);
       }
-      parameters.pageToken = result.nextPageToken;
+    if(result.nextPageToken){
+      parameters.set('pageToken', result.nextPageToken);
+    }else{
+      parameters.delete('pageToken');
+    }
+      
       // Loop until all albums have been listed and no new nextPageToken is
       // returned.
-    } while (parameters.pageToken != null);
+    } while (parameters.has('pageToken'));
 
   } catch (err) {
-    // If the error is a StatusCodeError, it contains an error.error object that
-    // should be returned. It has a name, statuscode and message in the correct
-    // format. Otherwise extract the properties.
-    error = err.error.error ||
-        {name: err.name, code: err.statusCode, message: err.message};
+    // Log the error and prepare to return it.
+    error = err;
     logger.error(error);
   }
 
   logger.info('Albums loaded.');
   return {albums, error};
+}
+
+// Return the body as JSON if the request was successful, or thrown a StatusError.
+async function checkStatus(response){
+  if (!response.ok){
+    // Throw a StatusError if a non-OK HTTP status was returned.
+    let message = "";
+    try{
+          // Try to parse the response body as JSON, in case the server returned a useful response.
+        message = await response.json();
+    } catch( err ){
+      // Ignore if no JSON payload was retrieved and use the status text instead.
+    }
+    throw new StatusError(response.status, response.statusText, message);
+  }
+
+  // If the HTTP status is OK, return the body as JSON.
+  return await response.json();
+}
+
+// Custom error that contains a status, title and a server message.
+class StatusError extends Error {
+  constructor(status, title, serverMessage, ...params) {
+    super(...params)
+    this.status = status;
+    this.statusTitle = title;
+    this.serverMessage= serverMessage;
+  }
 }
 
 // [END app]

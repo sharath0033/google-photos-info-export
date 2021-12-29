@@ -31,9 +31,11 @@ function showPreview(source, mediaItems) {
   // Display the length and the source of the items if set.
   if (source && mediaItems) {
     $('#images-count').text(mediaItems.length);
+    $('#images-source').text(JSON.stringify(source));
     $('#preview-description').show();
   } else {
     $('#images-count').text(0);
+    $('#images-source').text('No photo search selected');
     $('#preview-description').hide();
   }
 

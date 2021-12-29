@@ -14,17 +14,17 @@
 
 // This file contains the configuration options for this sample app.
 
-const config = {};
+export const config = {};
 
 // The OAuth client ID from the Google Developers console.
-config.oAuthClientID = process.env.GOOGLE_CLIENT_ID;
+config.oAuthClientID = '228922235308-4vt5eficksmtn70pt46d4rdpkiess63t.apps.googleusercontent.com';
 
 // The OAuth client secret from the Google Developers console.
-config.oAuthclientSecret = process.env.GOOGLE_CLIENT_SECRET;
+config.oAuthclientSecret = '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';
 
 // The callback to use for OAuth requests. This is the URL where the app is
 // running. For testing and running it locally, use 127.0.0.1.
-config.oAuthCallbackUrl = 'http://localhost:8080/auth/google/callback';
+config.oAuthCallbackUrl = 'http://127.0.0.1:8080/auth/google/callback';
 
 // The port where the app should listen for requests.
 config.port = 8080;
@@ -48,4 +48,3 @@ config.albumPageSize = 50;
 // The API end point to use. Do not change.
 config.apiEndpoint = 'https://photoslibrary.googleapis.com';
 
-module.exports = config;

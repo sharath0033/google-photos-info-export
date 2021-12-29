@@ -151,16 +151,15 @@ pre {
   overflow: hidden;
   text-transform: uppercase;
   will-change: box-shadow;
-  transition: box-shadow 0.2s cubic-bezier(0.4, 0, 1, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: box-shadow 0.2s cubic-bezier(0.4, 0, 1, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   outline: none;
   cursor: pointer;
   text-decoration: none;
   text-align: left;
   line-height: 40px;
   vertical-align: middle;
-  background-color: rgba(255, 255, 255, 0.2);
-  background-image: url("/imgs/logo_photos_24dp.svg");
+  background-color: rgba(255, 255, 255, 0.20);
+  background-image: url('/imgs/logo_photos_24dp.svg');
   background-repeat: no-repeat;
   background-position: 8px 8px;
 }
@@ -170,7 +169,7 @@ pre {
 }
 
 .gp-button:hover {
-  background-color: rgba(158, 158, 158, 0.2);
+  background-color: rgba(158, 158, 158, 0.20);
 }
 
 .gp-button:focus:not(:active) {
@@ -178,7 +177,7 @@ pre {
 }
 
 .gp-button:active {
-  background-color: rgba(158, 158, 158, 0.4);
+  background-color: rgba(158, 158, 158, 0.40);
 }
 
 .gp-button.gp-button--colored {
@@ -231,8 +230,4 @@ p .gp-button {
 
 .filter-group:last-child {
   padding-bottom: 2vh;
-}
-
-.mdl-layout__content {
-  width: 100%;
 }

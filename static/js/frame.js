@@ -115,6 +115,7 @@ function loadQueue() {
     success: (data) => {
       // Queue has been loaded. Display the media items as a grid on screen.
       hideLoadingDialog();
+      console.log("Data::", JSON.stringify(data));
       showPreview(data.parameters, data.photos);
       hideLoadingDialog();
       console.log('Loaded queue.');
@@ -144,7 +145,7 @@ function exportInfo() {
     data: JSON.stringify(payload),
     success: (data) => {
       //console.log(data);
-      exportCSVFile(data.headers, data.items, 'bride');
+      exportCSVFile(data.headers, data.items, 'File Name');
       hideLoadingDialog();
     },
     error: (data) => {

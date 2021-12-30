@@ -31,7 +31,7 @@ import winston from 'winston';
 
 import * as fs from 'fs';
 import exifr from 'exifr';
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import {config} from './config.js';
 import {auth} from './auth.js';
